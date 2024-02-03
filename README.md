@@ -30,6 +30,52 @@ applications which have previously used the OpenSSL package. For a complete
 feature list, see [Chapter 4](https://www.wolfssl.com/docs/wolfssl-manual/ch4/)
 of the wolfSSL manual.
 
+## How to build for RISC-V and run using SPIKE.
+To compile and run wolfSSL on RISC-V architecture you need:
+* Toolchain that supports RISC-V ISA like [RISCV toolchain](https://github.com/riscv/riscv-gnu-toolchain).
+* And clone [riscv-spike-sdk](https://github.com/sycuricon/riscv-spike-sdk.git), and follow the instructions to build spike etc.
+           
+``` bash
+$ ./configure --host=riscv64 CC="riscv64-unknown-linux-gnu-gcc"  --enable-sp CFLAGS="-mabi=lp64d -march=rv64imafdc \
+      -I$RISCV/sysroot/usr/include" --disable-asm --disable-shared --prefix=<path-to-riscv-spike-sdk>\
+      riscv-spike-sdk/rootfs/buildroot_initramfs/target/root/wolfssl-5.6.4/build/ --with-sysroot=$RISCV/sysroot/ --enable-examples \
+      LDFLAGS="-L$RISCV/riscv64-unknown-linux-gnu/lib" --enable-debug --enable-openssl --enable-singlethreaded \
+      --disable-crypttests --disable-crypttests-libs --enable-testcerts --enable-certservice \ 
+      RANLIB="riscv64-unknown-linux-gnu-ranlib" AR="riscv64-unknown-linux-gnu-ar" ARFLAGS="cr" \
+      STRIP="riscv64-unknown-linux-gnu-strip" --enable-static
+
+$ make
+
+$ make install
+```
+
+* After loading linux using spike, paste the below commands there for generating random numbers.
+
+``` bash
+        mknod -m 666 /dev/random c 1 8
+        mknod -m 666 /dev/urandom c 1 9
+        chown root:root /dev/random /dev/urandom
+        
+        echo "Initializing random number generator..."
+        random_seed=/var/run/random-seed
+        # Carry a random seed from start-up to start-up
+        # Load and then save the whole entropy pool
+        if [ -f $random_seed ]; then
+            cat $random_seed >/dev/urandom
+        else
+            touch $random_seed
+        fi
+        chmod 600 $random_seed
+        poolfile=/proc/sys/kernel/random/poolsize
+        [ -r $poolfile ] && bits=$(cat $poolfile) || bits=4096
+        bytes=$(expr $bits / 8)
+        dd if=/dev/urandom of=$random_seed count=1 bs=$bytes
+        
+        
+        date -s '2024-01-19 19:01:30'
+        
+```
+
 ## Notes, Please Read
 
 ### Note 1
